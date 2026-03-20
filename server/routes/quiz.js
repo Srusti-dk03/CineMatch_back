@@ -86,9 +86,8 @@ router.post('/submit', async (req, res) => {
 
     // ✅ Remove zero-score junk + fallback
     let topRecommendations = scoredMovies
-      .filter(item => item.score > 0)
-      .slice(0, 6)
-      .map(item => item.movie);
+  .slice(0, 6)
+  .map(item => item.movie);
 
     if (topRecommendations.length === 0) {
       topRecommendations = movies.slice(0, 6);
