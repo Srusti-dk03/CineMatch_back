@@ -9,12 +9,11 @@ router.post('/submit', async (req, res) => {
     const weights = {};
     const languagePreference = [];
 
-    // 🔍 Parse incoming tags
+    // 🔍 Parse answers
     Object.values(answers).forEach((val) => {
       if (typeof val === 'string' && val.trim() !== '' && val !== 'none') {
         const cleanVal = val.toLowerCase().trim();
 
-        // 🎯 Extract language separately
         if (["english", "hindi", "tamil", "telugu", "kannada", "malayalam", "any"].includes(cleanVal)) {
           languagePreference.push(cleanVal);
           return;
@@ -31,33 +30,33 @@ router.post('/submit', async (req, res) => {
 
     let filteredMovies = movies;
 
-    // ✅ RELAXED Language filter (fixed)
+    // ✅ FIXED LANGUAGE FILTER (STRONG MATCH)
     if (languagePreference.length > 0 && !languagePreference.includes("any")) {
-      const targetLang = languagePreference[0];
-      filteredMovies = movies.filter(
-        m => m.language && m.language.toLowerCase().includes(targetLang)
-      );
+      const targetLang = languagePreference[0].trim().toLowerCase();
+
+      filteredMovies = movies.filter(m => {
+        if (!m.language) return false;
+        return m.language.trim().toLowerCase() === targetLang;
+      });
     }
 
-    // ✅ Fallback if no movies found
+    // ✅ FALLBACK (VERY IMPORTANT)
     if (filteredMovies.length === 0) {
       filteredMovies = movies;
     }
 
-    // 🎯 SCORING SYSTEM
+    // 🎯 SCORING
     const scoredMovies = filteredMovies.map(movie => {
       let score = 0;
 
-      // Match moodTags
       movie.moodTags?.forEach(tag => {
-        if (weights[tag.toLowerCase()]) {
-          score += weights[tag.toLowerCase()] * 3;
-        }
+        const t = tag.toLowerCase();
+        if (weights[t]) score += weights[t] * 3;
       });
 
-      // Match Genres
       movie.genre?.forEach(g => {
         const lowerG = g.toLowerCase();
+
         if (weights[lowerG]) score += weights[lowerG] * 2;
 
         Object.keys(weights).forEach(wTag => {
@@ -65,7 +64,6 @@ router.post('/submit', async (req, res) => {
         });
       });
 
-      // Match description & title
       Object.keys(weights).forEach(wTag => {
         if (
           movie.description?.toLowerCase().includes(wTag) ||
@@ -78,16 +76,13 @@ router.post('/submit', async (req, res) => {
       return { movie, score };
     });
 
-    // 🔥 Sort by score
-    scoredMovies.sort((a, b) => {
-      if (b.score === a.score) return Math.random() - 0.5;
-      return b.score - a.score;
-    });
+    // 🔥 Sort
+    scoredMovies.sort((a, b) => b.score - a.score);
 
-    // ✅ Remove zero-score junk + fallback
+    // ✅ ALWAYS RETURN SOMETHING
     let topRecommendations = scoredMovies
-  .slice(0, 6)
-  .map(item => item.movie);
+      .slice(0, 6)
+      .map(item => item.movie);
 
     if (topRecommendations.length === 0) {
       topRecommendations = movies.slice(0, 6);
@@ -104,7 +99,7 @@ router.post('/submit', async (req, res) => {
     }
 
     const explanation =
-      topTags.length > 0 && topRecommendations.length > 0
+      topTags.length > 0
         ? `These ${langContext || ''} movies match your vibe: ${topTags.join(', ')}.`
         : `Here are some great movies you might enjoy!`;
 
