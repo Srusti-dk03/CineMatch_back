@@ -156,17 +156,17 @@ const seedDatabase = async () => {
     
     for (const movie of diverseIndianMovies) {
       const poster = await fetchIMDbPoster(movie.title);
-      authenticIndianMovies.push({
-        title: movie.title,
-        genre: ["Drama", "Action", "Indian Cinema"],
-        moodTags: [...movie.tags, movie.language.toLowerCase()], // keep tags for score calculation
-        rating: Math.floor(Math.random() * (9 - 7) + 7) + 0.5,
-        description: `(${movie.language}) ${movie.desc}`,
-        posterUrl: poster || `https://picsum.photos/seed/${encodeURIComponent(movie.title)}/600/900`, 
-        releaseYear: 2020 + Math.floor(Math.random() * 4), // 2020-2023
-        language: movie.language,
-        ottPlatforms: movie.platforms
-      });
+    authenticIndianMovies.push({
+    title: movie.title,
+   genre: ["Drama", "Action", "Indian Cinema"],
+  moodTags: movie.tags, // ✅ FIXED
+  rating: Math.floor(Math.random() * (9 - 7) + 7) + 0.5,
+  description: `(${movie.language}) ${movie.desc}`,
+  posterUrl: poster || `https://picsum.photos/seed/${encodeURIComponent(movie.title)}/600/900`, 
+  releaseYear: 2020 + Math.floor(Math.random() * 4),
+  language: movie.language,
+  ottPlatforms: movie.platforms
+});
     }
 
     const allMovies = [...hollywoodMovies, ...authenticIndianMovies];
