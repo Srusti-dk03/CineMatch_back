@@ -3,25 +3,26 @@ const Movie = require('../models/Movie');
 const router = express.Router();
 
 router.post('/submit', async (req, res) => {
-  const { answers } = req.body; 
-  
+  const { answers } = req.body;
+
   try {
     const weights = {};
     const languagePreference = [];
 
-    // Parse incoming tags
+    // 🔍 Parse incoming tags
     Object.values(answers).forEach((val) => {
       if (typeof val === 'string' && val.trim() !== '' && val !== 'none') {
         const cleanVal = val.toLowerCase().trim();
-        // Extract language separately
+
+        // 🎯 Extract language separately
         if (["english", "hindi", "tamil", "telugu", "kannada", "malayalam", "any"].includes(cleanVal)) {
           languagePreference.push(cleanVal);
-          return; 
+          return;
         }
 
         const splitTags = cleanVal.split(/[\s,]+/);
         splitTags.forEach(t => {
-          if (t) weights[t] = (weights[t] || 0) + 3; // +3 for explicit tags
+          if (t) weights[t] = (weights[t] || 0) + 3;
         });
       }
     });
@@ -29,32 +30,47 @@ router.post('/submit', async (req, res) => {
     const movies = await Movie.find();
 
     let filteredMovies = movies;
-    // VERY STRICT Language Enforcement: Only show exact matches to avoid dummy output
+
+    // ✅ RELAXED Language filter (fixed)
     if (languagePreference.length > 0 && !languagePreference.includes("any")) {
       const targetLang = languagePreference[0];
-      filteredMovies = movies.filter(m => m.language && m.language.toLowerCase() === targetLang);
+      filteredMovies = movies.filter(
+        m => m.language && m.language.toLowerCase().includes(targetLang)
+      );
     }
 
+    // ✅ Fallback if no movies found
+    if (filteredMovies.length === 0) {
+      filteredMovies = movies;
+    }
+
+    // 🎯 SCORING SYSTEM
     const scoredMovies = filteredMovies.map(movie => {
       let score = 0;
-      
-      // Match moodTags (3x multiplier for hyper accuracy)
-      movie.moodTags.forEach(tag => {
-        if (weights[tag.toLowerCase()]) score += weights[tag.toLowerCase()] * 3;
+
+      // Match moodTags
+      movie.moodTags?.forEach(tag => {
+        if (weights[tag.toLowerCase()]) {
+          score += weights[tag.toLowerCase()] * 3;
+        }
       });
-      
+
       // Match Genres
-      movie.genre.forEach(g => {
+      movie.genre?.forEach(g => {
         const lowerG = g.toLowerCase();
         if (weights[lowerG]) score += weights[lowerG] * 2;
+
         Object.keys(weights).forEach(wTag => {
           if (lowerG.includes(wTag)) score += weights[wTag] * 2;
         });
       });
-      
-      // Match descriptions & titles
+
+      // Match description & title
       Object.keys(weights).forEach(wTag => {
-        if (movie.description.toLowerCase().includes(wTag) || movie.title.toLowerCase().includes(wTag)) {
+        if (
+          movie.description?.toLowerCase().includes(wTag) ||
+          movie.title?.toLowerCase().includes(wTag)
+        ) {
           score += weights[wTag] * 1.5;
         }
       });
@@ -62,31 +78,41 @@ router.post('/submit', async (req, res) => {
       return { movie, score };
     });
 
-    // Strictly sort by highest score, NO random score modifications that ruin accuracy!
-    // We only shuffle exact mathematical ties.
+    // 🔥 Sort by score
     scoredMovies.sort((a, b) => {
       if (b.score === a.score) return Math.random() - 0.5;
-      return b.score - a.score; // Absolute mathematical accuracy
+      return b.score - a.score;
     });
-    
-    const topRecommendations = scoredMovies.slice(0, 6).map(item => item.movie);
-    
-    // Formatting presentation text
-    const topTags = Object.keys(weights).sort((a, b) => weights[b] - weights[a]).slice(0, 3);
+
+    // ✅ Remove zero-score junk + fallback
+    let topRecommendations = scoredMovies
+      .filter(item => item.score > 0)
+      .slice(0, 6)
+      .map(item => item.movie);
+
+    if (topRecommendations.length === 0) {
+      topRecommendations = movies.slice(0, 6);
+    }
+
+    // 🧠 Explanation
+    const topTags = Object.keys(weights)
+      .sort((a, b) => weights[b] - weights[a])
+      .slice(0, 3);
+
     let langContext = '';
     if (languagePreference.length > 0 && !languagePreference.includes("any")) {
       langContext = languagePreference[0].toUpperCase();
     }
-    
-    // Check if we found ANY movies after strict filter
-    const explanation = topTags.length > 0 && topRecommendations.length > 0
-      ? `Hyper-accurate match: These ${langContext} movies perfectly align with your requested vibes (${topTags.join(', ')}).`
-      : topRecommendations.length > 0
-        ? `Here are the top definitive ${langContext} hits that match your exact personality!`
-        : `We couldn't find any ${langContext} movies matching those specific criteria. Try loosening your filters!`;
+
+    const explanation =
+      topTags.length > 0 && topRecommendations.length > 0
+        ? `These ${langContext || ''} movies match your vibe: ${topTags.join(', ')}.`
+        : `Here are some great movies you might enjoy!`;
 
     res.json({ recommendations: topRecommendations, explanation });
+
   } catch (err) {
+    console.error(err);
     res.status(500).send('Server Error');
   }
 });
