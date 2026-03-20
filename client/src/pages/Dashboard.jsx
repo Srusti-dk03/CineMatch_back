@@ -19,7 +19,7 @@ const Dashboard = () => {
 
     const fetchDashboard = async () => {
       try {
-        const res = await axios.get('/api/users/dashboard');
+        const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/users/dashboard`);
         setDashboardData(res.data);
       } catch (err) {
         console.error(err);

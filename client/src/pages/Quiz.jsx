@@ -70,7 +70,7 @@ const questions = [
     id: 'q7',
     text: "Pick a companion for your journey:",
     options: [
-      { text: "A sarcastic robot", tag: "sci-fi" },
+      { text: "A sarcastic buddy", tag: "sci-fi" },
       { text: "A hardened detective", tag: "thriller" },
       { text: "Your high school crush", tag: "romance" },
       { text: "A group of misfits", tag: "comedy" }
@@ -133,7 +133,7 @@ const Quiz = () => {
   const submitQuiz = async (finalAnswers) => {
     setLoading(true);
     try {
-      const res = await axios.post('/api/quiz/submit', { answers: finalAnswers });
+      const res = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/quiz/submit`, { answers: finalAnswers });
       navigate('/results', { state: { data: res.data } });
     } catch (err) {
       console.error(err);

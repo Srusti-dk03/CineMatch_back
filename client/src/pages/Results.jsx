@@ -28,7 +28,7 @@ const Results = () => {
       return;
     }
     try {
-      await axios.post('/api/users/save-movie', { movieId });
+      await await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/users/save-movie`, { movieId });
       alert("Movie saved to your dashboard!");
     } catch (err) {
       console.error(err);
